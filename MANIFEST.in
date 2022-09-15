@@ -1,0 +1,8 @@
+include LICENSE
+include README.rst
+recursive-include core-base *
+recursive-exclude core-base/migrations/__pycache__ *
+recursive-exclude core-base/utils/__pycache__ *
+recursive-exclude core-base/system/__pycache__ *
+recursive-exclude requirements.txt
+recursive-exclude RELEASE.sh

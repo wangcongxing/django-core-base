@@ -8,7 +8,7 @@
 from rest_framework import serializers
 
 from core_base.models import Dept
-from core_base.utils.json_response import detail_response, success_response
+from core_base.utils.json_response import APIResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
 
@@ -127,14 +127,14 @@ class DeptViewSet(CustomModelViewSet):
                 else:
                     queryset = queryset.filter(id=self.request.user.dept_id)
             serializer = self.get_serializer(queryset, many=True, request=request)
-            return success_response(data=serializer.data, msg="获取成功")
+            return APIResponse(data=serializer.data, msg="获取成功")
 
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True, request=request)
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True, request=request)
-        return success_response(data=serializer.data, msg="获取成功")
+        return APIResponse(data=serializer.data, msg="获取成功")
 
     def dept_lazy_tree(self, request, *args, **kwargs):
         parent = self.request.query_params.get('parent')
@@ -145,4 +145,4 @@ class DeptViewSet(CustomModelViewSet):
             else:
                 queryset = queryset.filter(id=self.request.user.dept_id)
         data = queryset.filter(status=True).order_by('sort').values('name', 'id', 'parent')
-        return detail_response(data=data, msg="获取成功")
+        return APIResponse(data=data, msg="获取成功")

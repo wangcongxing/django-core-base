@@ -11,7 +11,7 @@ from rest_framework.decorators import action
 
 from core_base.models import Menu, MenuButton
 from core_base.system.views.menu_button import MenuButtonSerializer
-from core_base.utils.json_response import success_response
+from core_base.utils.json_response import APIResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
 
@@ -170,4 +170,4 @@ class MenuViewSet(CustomModelViewSet):
             queryset = Menu.objects.filter(id__in=menuIds, status=1)
         serializer = WebRouterSerializer(queryset, many=True, request=request)
         data = serializer.data
-        return success_response(data=data, total=len(data), msg="获取成功")
+        return APIResponse(data=data, msg="获取成功")

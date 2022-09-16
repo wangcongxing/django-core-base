@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from core_base import dispatch
 from core_base.models import Users, Role, Dept
 from core_base.system.views.role import RoleSerializer
-from core_base.utils.json_response import error_response, detail_response
+from core_base.utils.json_response import APIResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.validator import CustomUniqueValidator
 from core_base.utils.viewset import CustomModelViewSet
@@ -260,14 +260,14 @@ class UserViewSet(CustomModelViewSet):
             "email": user.email,
             "avatar": user.avatar,
         }
-        return detail_response(data=result, msg="获取成功")
+        return APIResponse(data=result, msg="获取成功")
 
     @action(methods=["PUT"], detail=False, permission_classes=[IsAuthenticated])
     def update_user_info(self, request):
         """修改当前用户信息"""
         user = request.user
         Users.objects.filter(id=user.id).update(**request.data)
-        return detail_response(data=None, msg="修改成功")
+        return APIResponse(data=None, msg="修改成功")
 
     @action(methods=["PUT"], detail=True, permission_classes=[IsAuthenticated])
     def change_password(self, request, *args, **kwargs):
@@ -279,15 +279,15 @@ class UserViewSet(CustomModelViewSet):
         new_pwd2 = data.get("newPassword2")
         if instance:
             if new_pwd != new_pwd2:
-                return error_response(msg="两次密码不匹配")
+                return APIResponse(msg="两次密码不匹配")
             elif instance.check_password(old_pwd):
                 instance.password = make_password(new_pwd)
                 instance.save()
-                return detail_response(data=None, msg="修改成功")
+                return APIResponse(data=None, msg="修改成功")
             else:
-                return error_response(msg="旧密码不正确")
+                return APIResponse(msg="旧密码不正确")
         else:
-            return error_response(msg="未获取到用户")
+            return APIResponse(msg="未获取到用户")
 
     @action(methods=["PUT"], detail=True, permission_classes=[IsAuthenticated])
     def reset_to_default_password(self, request, *args, **kwargs):
@@ -296,9 +296,9 @@ class UserViewSet(CustomModelViewSet):
         if instance:
             instance.set_password(dispatch.get_system_config_values("base.default_password"))
             instance.save()
-            return detail_response(data=None, msg="密码重置成功")
+            return APIResponse(data=None, msg="密码重置成功")
         else:
-            return error_response(msg="未获取到用户")
+            return APIResponse(msg="未获取到用户")
 
     @action(methods=["PUT"], detail=True)
     def reset_password(self, request, pk):
@@ -311,10 +311,10 @@ class UserViewSet(CustomModelViewSet):
         new_pwd2 = data.get("newPassword2")
         if instance:
             if new_pwd != new_pwd2:
-                return error_response(msg="两次密码不匹配")
+                return APIResponse(msg="两次密码不匹配")
             else:
                 instance.password = make_password(new_pwd)
                 instance.save()
-                return detail_response(data=None, msg="修改成功")
+                return APIResponse(data=None, msg="修改成功")
         else:
-            return error_response(msg="未获取到用户")
+            return APIResponse(msg="未获取到用户")

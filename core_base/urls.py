@@ -23,7 +23,20 @@ from core_base.system.views.operation_log import OperationLogViewSet
 from core_base.system.views.role import RoleViewSet
 from core_base.system.views.system_config import SystemConfigViewSet
 from core_base.system.views.user import UserViewSet
-
+from django.conf.urls.static import static
+from django.urls import path, include, re_path
+from rest_framework import permissions
+from rest_framework_simplejwt.views import (TokenRefreshView)
+from core_base import dispatch
+from core_base import settings
+from core_base.system.views.dictionary import InitDictionaryViewSet
+from core_base.system.views.login import (
+    LoginView,
+    CaptchaView,
+    ApiLogin,
+    LogoutView,
+)
+from core_base.system.views.system_config import InitSettingsViewSet
 system_url = routers.SimpleRouter()
 system_url.register(r'menu', MenuViewSet)
 system_url.register(r'menu_button', MenuButtonViewSet)
@@ -39,6 +52,15 @@ system_url.register(r'system_config', SystemConfigViewSet)
 system_url.register(r'message_center', MessageCenterViewSet)
 
 urlpatterns = [
+    path("api/system/", include("core_base.system.urls")),
+    path("api/login/", LoginView.as_view(), name="token_obtain_pair"),
+    path("api/logout/", LogoutView.as_view(), name="token_obtain_pair"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    #re_path(r"^api-auth/", include("rest_framework.urls", namespace="rest_framework")),
+    path("api/captcha/", CaptchaView.as_view()),
+    path("api/init/dictionary/", InitDictionaryViewSet.as_view()),
+    path("api/init/settings/", InitSettingsViewSet.as_view()),
+    path("apiLogin/", ApiLogin.as_view()),
     path('user/export/', UserViewSet.as_view({'post': 'export_data', })),
     path('user/import/', UserViewSet.as_view({'get': 'import_data', 'post': 'import_data'})),
     path('system_config/save_content/', SystemConfigViewSet.as_view({'put': 'save_content'})),

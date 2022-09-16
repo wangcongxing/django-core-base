@@ -71,4 +71,4 @@ class Initialize(CoreInitialize):
 
 
 if __name__ == "__main__":
-    Initialize(app='dvadmin.system').run()
+    Initialize(app='core_base').run()

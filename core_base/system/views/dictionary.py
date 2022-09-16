@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from core_base import dispatch
 from core_base.models import Dictionary
-from core_base.utils.json_response import success_response
+from core_base.utils.json_response import APIResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
 
@@ -115,5 +115,5 @@ class InitDictionaryViewSet(APIView):
             else:
                 data = self.queryset.filter(parent__value=dictionary_key, status=True).values('label', 'value', 'type',
                                                                                               'color')
-            return success_response(data=data, msg="获取成功")
-        return success_response(data=[], msg="获取成功")
+            return APIResponse(data=data, msg="获取成功")
+        return APIResponse(data=[], msg="获取成功")

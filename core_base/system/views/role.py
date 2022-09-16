@@ -13,7 +13,7 @@ from core_base.models import Role, Menu
 from core_base.system.views.dept import DeptSerializer
 from core_base.system.views.menu import MenuSerializer
 from core_base.system.views.menu_button import MenuButtonSerializer
-from core_base.utils.json_response import success_response
+from core_base.utils.json_response import APIResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.validator import CustomUniqueValidator
 from core_base.utils.viewset import CustomModelViewSet
@@ -104,4 +104,4 @@ class RoleViewSet(CustomModelViewSet):
         # queryset = instance.menu.all()
         queryset = Menu.objects.filter(status=1).all()
         serializer = MenuPermissonSerializer(queryset, many=True)
-        return SuccessResponse(data=serializer.data)
+        return APIResponse(data=serializer.data)

@@ -13,7 +13,7 @@ from django.db.models import ProtectedError
 from rest_framework.exceptions import APIException as DRFAPIException, AuthenticationFailed
 from rest_framework.views import set_rollback
 
-from core_base.utils.json_response import error_response
+from core_base.utils.json_response import APIResponse
 
 logger = logging.getLogger(__name__)
 
@@ -50,4 +50,4 @@ def CustomExceptionHandler(ex, context):
     # for key in errorMsg:
     #     msg = errorMsg[key][0]
 
-    return error_response(msg=msg, code=code)
+    return APIResponse(msg=msg, code=code)

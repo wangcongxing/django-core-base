@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from core_base.models import MessageCenter, Users
 from core_base.system.views.role import RoleSerializer
 from core_base.system.views.user import UserSerializer
-from core_base.utils.json_response import success_response
+from core_base.utils.json_response import APIResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
 
@@ -102,4 +102,4 @@ class MessageCenterViewSet(CustomModelViewSet):
             serializer = self.get_serializer(page, many=True, request=request)
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True, request=request)
-        return success_response(data=serializer.data, msg="获取成功")
+        return APIResponse(data=serializer.data, msg="获取成功")

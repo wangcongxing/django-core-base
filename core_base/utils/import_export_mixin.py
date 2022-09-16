@@ -10,7 +10,7 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from rest_framework.request import Request
 
 from core_base.utils.import_export import import_to_data
-from core_base.utils.json_response import detail_response
+from core_base.utils.json_response import APIResponse
 from core_base.utils.request_util import get_verbose_name
 
 
@@ -140,7 +140,7 @@ class ImportSerializerMixin:
             serializer = self.import_serializer_class(instance, data=ele)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-        return detail_response(msg=f"导入成功！")
+        return APIResponse(msg=f"导入成功！")
 
 
 class ExportSerializerMixin:

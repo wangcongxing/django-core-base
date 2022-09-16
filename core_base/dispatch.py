@@ -1,18 +1,7 @@
 #!/usr/bin/env python
-# -*- coding: UTF-8 -*-
-'''
-@Project ：django-core-base 
-@File    ：dispatch.py.py
-@Author  ：cx
-@Date    ：2022/9/15 18:17 
-@Desc    ：
-'''
-# !/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 from django.conf import settings
 from django.db import connection
-from django_tenants.utils import tenant_context, get_tenant_model
 
 def is_tenants_mode():
     """
@@ -26,14 +15,39 @@ def is_tenants_mode():
 # ******************** 初始化 ******************** #
 # ================================================= #
 def _get_all_dictionary():
-    data = []
+    from core_base.models import Dictionary
 
+    queryset = Dictionary.objects.filter(status=True, is_value=False)
+    data = []
+    for instance in queryset:
+        data.append(
+            {
+                "id": instance.id,
+                "value": instance.value,
+                "children": list(
+                    Dictionary.objects.filter(parent=instance.id)
+                    .filter(status=1)
+                    .values("label", "value", "type", "color")
+                ),
+            }
+        )
     return {ele.get("value"): ele for ele in data}
 
 
 def _get_all_system_config():
     data = {}
+    from core_base.models import SystemConfig
 
+    system_config_obj = (
+        SystemConfig.objects.filter(status=True, parent_id__isnull=False)
+        .values("parent__key", "key", "value", "form_item_type")
+        .order_by("sort")
+    )
+    for system_config in system_config_obj:
+        value = system_config.get("value", "")
+        if value and system_config.get("form_item_type") == 7:
+            value = value[0].get("url")
+        data[f"{system_config.get('parent__key')}.{system_config.get('key')}"] = value
     return data
 
 
@@ -44,6 +58,7 @@ def init_dictionary():
     """
     try:
         if is_tenants_mode():
+            from django_tenants.utils import tenant_context, get_tenant_model
 
             for tenant in get_tenant_model().objects.filter():
                 with tenant_context(tenant):
@@ -64,6 +79,7 @@ def init_system_config():
     try:
 
         if is_tenants_mode():
+            from django_tenants.utils import tenant_context, get_tenant_model
 
             for tenant in get_tenant_model().objects.filter():
                 with tenant_context(tenant):
@@ -81,6 +97,7 @@ def refresh_dictionary():
     :return:
     """
     if is_tenants_mode():
+        from django_tenants.utils import tenant_context, get_tenant_model
 
         for tenant in get_tenant_model().objects.filter():
             with tenant_context(tenant):
@@ -95,6 +112,7 @@ def refresh_system_config():
     :return:
     """
     if is_tenants_mode():
+        from django_tenants.utils import tenant_context, get_tenant_model
 
         for tenant in get_tenant_model().objects.filter():
             with tenant_context(tenant):

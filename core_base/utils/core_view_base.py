@@ -12,7 +12,7 @@
 # -*- coding:utf-8 -*-
 from django.http import QueryDict
 
-import json_response
+from core_base.utils.json_response import APIResponse
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import viewsets
@@ -85,7 +85,7 @@ class CustomViewBase(viewsets.ModelViewSet):
         serializer.instance.editor = currentUser
         serializer.instance.save()
         headers = self.get_success_headers(serializer.data)
-        return json_response.success_response(0, '操作成功', results=serializer.data, http_status=status.HTTP_200_OK,
+        return APIResponse(0, '操作成功', results=serializer.data, http_status=status.HTTP_200_OK,
                                              headers=headers)
 
     def list(self, request, *args, **kwargs):
@@ -93,19 +93,19 @@ class CustomViewBase(viewsets.ModelViewSet):
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            return json_response.success_response(0, '',
+            return APIResponse(0, '',
                                                  results=serializer.data,
                                                  http_status=status.HTTP_200_OK, **{"count": len(queryset)})
 
             # return self.get_paginated_response(serializer.data)
 
         serializer = self.get_serializer(queryset, many=True)
-        return json_response.success_response(0, '', results=serializer.data, http_status=status.HTTP_200_OK, )
+        return APIResponse(0, '', results=serializer.data, http_status=status.HTTP_200_OK, )
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
-        return json_response.success_response(0, '', results=serializer.data, http_status=status.HTTP_200_OK, )
+        return APIResponse(0, '', results=serializer.data, http_status=status.HTTP_200_OK, )
 
     def update(self, request, *args, **kwargs):
         data = request.POST.copy()
@@ -128,7 +128,7 @@ class CustomViewBase(viewsets.ModelViewSet):
             # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
 
-        return json_response.success_response(0, '操作成功', results=serializer.data, http_status=status.HTTP_200_OK, )
+        return APIResponse(0, '操作成功', results=serializer.data, http_status=status.HTTP_200_OK, )
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
@@ -136,7 +136,7 @@ class CustomViewBase(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         self.perform_destroy(instance)
-        return json_response.success_response(0, '操作成功',
+        return APIResponse(0, '操作成功',
                                              http_status=status.HTTP_200_OK, )
 
     # 批量删除
@@ -146,4 +146,4 @@ class CustomViewBase(viewsets.ModelViewSet):
         list_ids = list(filter(None, delete_id.split(',')))
         list_ids = [int(x) for x in list_ids if x.split()]
         self.queryset.model.objects.filter(id__in=list_ids).delete()
-        return json_response.success_response(0, "操作成功", results=list_ids)
+        return APIResponse(0, "操作成功", results=list_ids)

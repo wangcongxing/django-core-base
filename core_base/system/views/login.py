@@ -16,7 +16,7 @@ from django.conf import settings
 
 from core_base import dispatch
 from core_base.models import Users
-from core_base.utils.json_response import error_response, detail_response
+from core_base.utils.json_response import APIResponse
 from core_base.utils.request_util import save_login_log
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.validator import CustomValidationError
@@ -38,7 +38,7 @@ class CaptchaView(APIView):
                 "key": id,
                 "image_base": "data:image/png;base64," + image_base.decode("utf-8"),
             }
-        return detail_response(data=data)
+        return APIResponse(data=data)
 
 
 class LoginSerializer(TokenObtainPairSerializer):
@@ -131,7 +131,7 @@ class LoginTokenView(TokenObtainPairView):
 
 class LogoutView(APIView):
     def post(self, request):
-        return detail_response(msg="注销成功")
+        return APIResponse(msg="注销成功")
 
 
 class ApiLoginSerializer(CustomModelSerializer):
@@ -164,4 +164,4 @@ class ApiLogin(APIView):
             login(request, user_obj)
             return redirect("/")
         else:
-            return error_response(msg="账号/密码错误")
+            return APIResponse(msg="账号/密码错误")

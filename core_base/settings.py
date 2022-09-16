@@ -30,7 +30,7 @@ ALL_MODELS_OBJECTS = []  # 所有app models 对象
 INITIALIZE_LIST = []
 INITIALIZE_RESET_LIST = []
 # 表前缀
-TABLE_PREFIX = locals().get('TABLE_PREFIX', "core_base")
+TABLE_PREFIX = locals().get('TABLE_PREFIX', "core_base_")
 # 系统配置
 SYSTEM_CONFIG = {}
 # 字典配置

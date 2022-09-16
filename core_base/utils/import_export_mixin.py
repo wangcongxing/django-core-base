@@ -13,6 +13,7 @@ from core_base.utils.import_export import import_to_data
 from core_base.utils.json_response import detail_response
 from core_base.utils.request_util import get_verbose_name
 
+
 class ImportSerializerMixin:
     """
     自定义导入模板、导入功能
@@ -139,7 +140,7 @@ class ImportSerializerMixin:
             serializer = self.import_serializer_class(instance, data=ele)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-        return DetailResponse(msg=f"导入成功！")
+        return detail_response(msg=f"导入成功！")
 
 
 class ExportSerializerMixin:

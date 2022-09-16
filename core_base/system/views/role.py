@@ -9,7 +9,7 @@
 from rest_framework import serializers
 from rest_framework.decorators import action
 
-from core_base.system.models import Role, Menu
+from core_base.models import Role, Menu
 from core_base.system.views.dept import DeptSerializer
 from core_base.system.views.menu import MenuSerializer
 from core_base.system.views.menu_button import MenuButtonSerializer
@@ -104,4 +104,4 @@ class RoleViewSet(CustomModelViewSet):
         # queryset = instance.menu.all()
         queryset = Menu.objects.filter(status=1).all()
         serializer = MenuPermissonSerializer(queryset, many=True)
-        return success_response(data=serializer.data)
+        return SuccessResponse(data=serializer.data)

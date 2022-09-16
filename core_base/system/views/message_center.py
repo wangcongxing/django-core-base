@@ -5,7 +5,7 @@ from django_restql.fields import DynamicSerializerMethodField
 from rest_framework.decorators import action, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
-from core_base.system.models import MessageCenter, Users
+from core_base.models import MessageCenter, Users
 from core_base.system.views.role import RoleSerializer
 from core_base.system.views.user import UserSerializer
 from core_base.utils.json_response import success_response

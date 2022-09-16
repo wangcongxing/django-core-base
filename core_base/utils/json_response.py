@@ -16,25 +16,19 @@ class success_response(Response):
     (1)默认code返回2000, 不支持指定其他返回码
     """
 
-    def __init__(self, data_status=0, data_msg='ok', results=None
-                 , http_status=None, headers=None, exception=False, **kwargs):
-        # data的初始状态：状态码与状态信息
-        data = {
-            'code': data_status,
-            'msg': data_msg,
+    def __init__(self, data=None, msg='success', status=None, template_name=None, headers=None, exception=False,
+                 content_type=None,page=1,limit=1,total=1):
+        std_data = {
+            "code": 2000,
+            "data": {
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "data": data
+            },
+            "msg": msg
         }
-        # data的响应数据体
-        # results可能是False、0等数据，这些数据某些情况下也会作为合法数据返回
-        if results is not None:
-            data['data'] = results
-        # data响应的其他内容
-        # if kwargs is not None:
-        #     for k, v in kwargs:
-        #         setattr(data, k, v)
-        data.update(kwargs)
-
-        # 重写父类的Response的__init__方法
-        super().__init__(data=data, status=http_status, headers=headers, exception=exception)
+        super().__init__(std_data, status, template_name, headers, exception, content_type)
 
 
 class detail_response(Response):
@@ -46,7 +40,7 @@ class detail_response(Response):
     def __init__(self, data=None, msg='success', status=None, template_name=None, headers=None, exception=False,
                  content_type=None,):
         std_data = {
-            "code": 0,
+            "code": 2000,
             "data": data,
             "msg": msg
         }

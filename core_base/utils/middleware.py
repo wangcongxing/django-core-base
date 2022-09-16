@@ -7,8 +7,9 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.utils.deprecation import MiddlewareMixin
 
-from core_base.system.models import OperationLog
-from core_base.utils.request_util import get_request_user, get_request_ip, get_request_data, get_request_path, get_os, get_browser, get_verbose_name
+from core_base.models import OperationLog
+from core_base.utils.request_util import get_request_user, get_request_ip, get_request_data, get_request_path, get_os, \
+    get_browser, get_verbose_name
 
 
 class ApiLoggingMiddleware(MiddlewareMixin):

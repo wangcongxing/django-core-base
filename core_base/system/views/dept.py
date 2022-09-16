@@ -7,7 +7,7 @@
 """
 from rest_framework import serializers
 
-from core_base.system.models import Dept
+from core_base.models import Dept
 from core_base.utils.json_response import detail_response, success_response
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet

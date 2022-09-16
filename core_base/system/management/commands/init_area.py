@@ -16,7 +16,7 @@ from django.db import connection
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'application.settings')
 django.setup()
 from core_base.settings import BASE_DIR
-from core_base.system.models import Area
+from core_base.models import Area
 
 area_code_list = []
 

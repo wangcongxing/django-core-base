@@ -6,8 +6,8 @@ from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 
-from application import dispatch
-from core_base.system.models import Users, Role, Dept
+from core_base import dispatch
+from core_base.models import Users, Role, Dept
 from core_base.system.views.role import RoleSerializer
 from core_base.utils.json_response import error_response, detail_response
 from core_base.utils.serializers import CustomModelSerializer

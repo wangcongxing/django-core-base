@@ -9,7 +9,7 @@
 from rest_framework import serializers
 from rest_framework.decorators import action
 
-from core_base.system.models import Menu, MenuButton
+from core_base.models import Menu, MenuButton
 from core_base.system.views.menu_button import MenuButtonSerializer
 from core_base.utils.json_response import success_response
 from core_base.utils.serializers import CustomModelSerializer

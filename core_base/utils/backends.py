@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
-'''
-@Project ：django-core-base 
-@File    ：backends.py
-@Author  ：cx
-@Date    ：2022/9/15 04:26 
-@Desc    ：
-'''
 import hashlib
 import logging
 

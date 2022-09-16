@@ -19,9 +19,9 @@ from django_filters.filters import CharFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters.utils import get_model_field
 from rest_framework.filters import BaseFilterBackend
-
-from core_base.system.models import Dept, ApiWhiteList
-
+from core_base.models import Dept, ApiWhiteList
+from django.db import models
+from timezone_field import TimeZoneField
 
 def get_dept(dept_id: int, dept_all_list=None, dept_list=None):
     """
@@ -230,8 +230,7 @@ class CustomDjangoFilterBackend(DjangoFilterBackend):
 
                     for field_name, lookups in fields.items():
                         field = get_model_field(cls._meta.model, field_name)
-                        from django.db import models
-                        from timezone_field import TimeZoneField
+
 
                         # 不进行 过滤的model 类
                         if isinstance(field, (models.JSONField, TimeZoneField)):

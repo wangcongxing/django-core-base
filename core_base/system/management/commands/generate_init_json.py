@@ -12,7 +12,7 @@ django.setup()
 from django.core.management.base import BaseCommand
 
 from core_base.settings import BASE_DIR
-from core_base.system.models import Menu, Users, Dept, Role, ApiWhiteList, Dictionary, SystemConfig
+from core_base.models import Menu, Users, Dept, Role, ApiWhiteList, Dictionary, SystemConfig
 from core_base.system.views.api_white_list import ApiWhiteListInitSerializer
 from core_base.system.views.dept import DeptInitSerializer
 from core_base.system.views.dictionary import DictionaryInitSerializer

@@ -6,7 +6,7 @@
 @Created on: 2022/1/1 001 9:34
 @Remark:
 """
-from core_base.system.models import ApiWhiteList
+from core_base.models import ApiWhiteList
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
 

@@ -36,5 +36,7 @@ setup(
         "openpyxl >= 3.0.10",
         "pypinyin >= 0.47.1",
         "captcha >= 0.4",
+        "django-tenants >= 0.4",
+        "django-timezone-field >= 1.0",
     ]
 )

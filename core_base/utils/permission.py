@@ -12,7 +12,9 @@ from django.contrib.auth.models import AnonymousUser
 from django.db.models import F
 from rest_framework.permissions import BasePermission
 
-from core_base.system.models import ApiWhiteList
+from core_base.models import ApiWhiteList
+
+
 def ValidationApi(reqApi, validApi):
     """
     验证当前用户是否有接口权限

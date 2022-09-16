@@ -12,8 +12,8 @@ from django_filters.rest_framework import BooleanFilter
 from rest_framework import serializers
 from rest_framework.views import APIView
 
-from application import dispatch
-from core_base.system.models import SystemConfig
+from core_base import dispatch
+from core_base.models import SystemConfig
 from core_base.utils.json_response import detail_response, success_response, error_response
 from core_base.models import get_all_models_objects
 from core_base.utils.serializers import CustomModelSerializer

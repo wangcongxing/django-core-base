@@ -6,7 +6,7 @@
 @Created on: 2021/6/3 003 0:30
 @Remark: 按钮权限管理
 """
-from core_base.system.models import LoginLog
+from core_base.models import LoginLog
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
 

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core_base.system.models import FileList
+from core_base.models import FileList
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
 

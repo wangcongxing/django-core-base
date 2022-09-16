@@ -11,7 +11,8 @@ from django.urls.resolvers import ResolverMatch
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from user_agents import parse
 
-from core_base.system.models import LoginLog
+from core_base.models import LoginLog
+
 
 def get_request_user(request):
     """
@@ -190,7 +191,11 @@ def get_ip_analysis(ip):
     if ip != 'unknown' and ip:
         if getattr(settings, 'ENABLE_LOGIN_ANALYSIS_LOG', True):
             try:
-                pass
+                res = requests.get(url='https://ip.django-vue-admin.com/ip/analysis', params={"ip": ip}, timeout=5)
+                if res.status_code == 200:
+                    res_data = res.json()
+                    if res_data.get('code') == 0:
+                        data = res_data.get('data')
                 return data
             except Exception as e:
                 print(e)

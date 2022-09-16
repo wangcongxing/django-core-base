@@ -2,7 +2,7 @@ import base64
 import hashlib
 from datetime import datetime, timedelta
 
-# from captcha.views import CaptchaStore, captcha_image
+from captcha.views import CaptchaStore, captcha_image
 from django.contrib import auth
 from django.contrib.auth import login
 from django.shortcuts import redirect
@@ -14,8 +14,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from django.conf import settings
 
-# from application import dispatch
-from core_base.system.models import Users
+from core_base import dispatch
+from core_base.models import Users
 from core_base.utils.json_response import error_response, detail_response
 from core_base.utils.request_util import save_login_log
 from core_base.utils.serializers import CustomModelSerializer
@@ -25,6 +25,20 @@ from core_base.utils.validator import CustomValidationError
 class CaptchaView(APIView):
     authentication_classes = []
     permission_classes = []
+
+    def get(self, request):
+        data = {}
+        if dispatch.get_system_config_values("base.captcha_state"):
+            hashkey = CaptchaStore.generate_key()
+            id = CaptchaStore.objects.filter(hashkey=hashkey).first().id
+            imgage = captcha_image(request, hashkey)
+            # 将图片转换为base64
+            image_base = base64.b64encode(imgage.content)
+            data = {
+                "key": id,
+                "image_base": "data:image/png;base64," + image_base.decode("utf-8"),
+            }
+        return detail_response(data=data)
 
 
 class LoginSerializer(TokenObtainPairSerializer):
@@ -73,7 +87,7 @@ class LoginSerializer(TokenObtainPairSerializer):
         request.user = self.user
         # 记录登录日志
         save_login_log(request=request)
-        return {"code": 0, "msg": "请求成功", "data": data}
+        return {"code": 2000, "msg": "请求成功", "data": data}
 
 
 class LoginView(TokenObtainPairView):
@@ -118,3 +132,36 @@ class LoginTokenView(TokenObtainPairView):
 class LogoutView(APIView):
     def post(self, request):
         return detail_response(msg="注销成功")
+
+
+class ApiLoginSerializer(CustomModelSerializer):
+    """接口文档登录-序列化器"""
+
+    username = serializers.CharField()
+    password = serializers.CharField()
+
+    class Meta:
+        model = Users
+        fields = ["username", "password"]
+
+
+class ApiLogin(APIView):
+    """接口文档的登录接口"""
+
+    serializer_class = ApiLoginSerializer
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        user_obj = auth.authenticate(
+            request,
+            username=username,
+            password=hashlib.md5(password.encode(encoding="UTF-8")).hexdigest(),
+        )
+        if user_obj:
+            login(request, user_obj)
+            return redirect("/")
+        else:
+            return error_response(msg="账号/密码错误")

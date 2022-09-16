@@ -1,19 +1,19 @@
 from django.urls import path
 from rest_framework import routers
 
-from dvadmin.system.views.api_white_list import ApiWhiteListViewSet
-from dvadmin.system.views.area import AreaViewSet
-from dvadmin.system.views.dept import DeptViewSet
-from dvadmin.system.views.dictionary import DictionaryViewSet
-from dvadmin.system.views.file_list import FileViewSet
-from dvadmin.system.views.login_log import LoginLogViewSet
-from dvadmin.system.views.menu import MenuViewSet
-from dvadmin.system.views.menu_button import MenuButtonViewSet
-from dvadmin.system.views.message_center import MessageCenterViewSet
-from dvadmin.system.views.operation_log import OperationLogViewSet
-from dvadmin.system.views.role import RoleViewSet
-from dvadmin.system.views.system_config import SystemConfigViewSet
-from dvadmin.system.views.user import UserViewSet
+from core_base.system.views.api_white_list import ApiWhiteListViewSet
+from core_base.system.views.area import AreaViewSet
+from core_base.system.views.dept import DeptViewSet
+from core_base.system.views.dictionary import DictionaryViewSet
+from core_base.system.views.file_list import FileViewSet
+from core_base.system.views.login_log import LoginLogViewSet
+from core_base.system.views.menu import MenuViewSet
+from core_base.system.views.menu_button import MenuButtonViewSet
+from core_base.system.views.operation_log import OperationLogViewSet
+from core_base.system.views.role import RoleViewSet
+from core_base.system.views.system_config import SystemConfigViewSet
+from core_base.system.views.user import UserViewSet
+from core_base.system.views.message_center import MessageCenterViewSet
 
 system_url = routers.SimpleRouter()
 system_url.register(r'menu', MenuViewSet)

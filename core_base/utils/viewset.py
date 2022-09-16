@@ -16,7 +16,8 @@ from core_base.utils.json_response import success_response, error_response, deta
 from core_base.utils.permission import CustomPermission
 from django_restql.mixins import QueryArgumentsMixin
 
-class CustomModelViewSet(ModelViewSet,ImportSerializerMixin,ExportSerializerMixin,QueryArgumentsMixin):
+
+class CustomModelViewSet(ModelViewSet, ImportSerializerMixin, ExportSerializerMixin, QueryArgumentsMixin):
     """
     自定义的ModelViewSet:
     统一标准的返回格式;新增,查询,修改可使用不同序列化器
@@ -90,7 +91,7 @@ class CustomModelViewSet(ModelViewSet,ImportSerializerMixin,ExportSerializerMixi
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         request_data = request.data
-        soft_delete = request_data.get('soft_delete',True)
+        soft_delete = request_data.get('soft_delete', True)
         if soft_delete:
             instance.is_deleted = True
             instance.save()
@@ -98,3 +99,12 @@ class CustomModelViewSet(ModelViewSet,ImportSerializerMixin,ExportSerializerMixi
             self.perform_destroy(instance)
         return detail_response(data=[], msg="删除成功")
 
+    @action(methods=['delete'], detail=False)
+    def multiple_delete(self, request, *args, **kwargs):
+        request_data = request.data
+        keys = request_data.get('keys', None)
+        if keys:
+            self.get_queryset().filter(id__in=keys).delete()
+            return success_response(data=[], msg="删除成功")
+        else:
+            return error_response(msg="未获取到keys字段")

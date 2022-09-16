@@ -6,8 +6,7 @@ from django.apps import apps
 from rest_framework import request
 
 from core_base import settings
-from core_base.system.models import Users
-#from django.conf import settings
+from core_base.models import Users
 
 
 class CoreInitialize:

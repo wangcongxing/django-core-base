@@ -9,7 +9,8 @@
 from rest_framework import serializers
 from rest_framework.views import APIView
 
-from core_base.system.models import Dictionary
+from core_base import dispatch
+from core_base.models import Dictionary
 from core_base.utils.json_response import success_response
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
@@ -106,16 +107,13 @@ class InitDictionaryViewSet(APIView):
     def get(self, request):
         dictionary_key = self.request.query_params.get('dictionary_key')
         if dictionary_key:
-            '''
             if dictionary_key == 'all':
                 data = [ele for ele in dispatch.get_dictionary_config().values()]
                 if not data:
-                    pass
-                    #dispatch.refresh_dictionary()
-                    #data = [ele for ele in dispatch.get_dictionary_config().values()]
+                    dispatch.refresh_dictionary()
+                    data = [ele for ele in dispatch.get_dictionary_config().values()]
             else:
                 data = self.queryset.filter(parent__value=dictionary_key, status=True).values('label', 'value', 'type',
-                                                                                           'color') '''
-            data =[]
+                                                                                              'color')
             return success_response(data=data, msg="获取成功")
         return success_response(data=[], msg="获取成功")

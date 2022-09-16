@@ -7,7 +7,7 @@
 @Remark: 操作日志管理
 """
 
-from core_base.system.models import OperationLog
+from core_base.models import OperationLog
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
 

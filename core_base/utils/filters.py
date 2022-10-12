@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""
-@author: 猿小天
-@contact: QQ:1638245306
-@Created on: 2021/6/6 006 12:39
-@Remark: 自定义过滤器
-"""
 import operator
 import re
 from collections import OrderedDict
@@ -19,9 +13,9 @@ from django_filters.filters import CharFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters.utils import get_model_field
 from rest_framework.filters import BaseFilterBackend
+
 from core_base.models import Dept, ApiWhiteList
-from django.db import models
-from timezone_field import TimeZoneField
+
 
 def get_dept(dept_id: int, dept_all_list=None, dept_list=None):
     """
@@ -230,7 +224,8 @@ class CustomDjangoFilterBackend(DjangoFilterBackend):
 
                     for field_name, lookups in fields.items():
                         field = get_model_field(cls._meta.model, field_name)
-
+                        from django.db import models
+                        from timezone_field import TimeZoneField
 
                         # 不进行 过滤的model 类
                         if isinstance(field, (models.JSONField, TimeZoneField)):

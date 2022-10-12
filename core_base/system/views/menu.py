@@ -1,17 +1,11 @@
 # -*- coding: utf-8 -*-
-
-"""
-@author: 猿小天
-@contact: QQ:1638245306
-@Created on: 2021/6/1 001 22:38
-@Remark: 菜单模块
-"""
+import uuid
 from rest_framework import serializers
 from rest_framework.decorators import action
 
 from core_base.models import Menu, MenuButton
 from core_base.system.views.menu_button import MenuButtonSerializer
-from core_base.utils.json_response import APIResponse
+from core_base.utils.json_response import SuccessResponse, ErrorResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
 
@@ -73,41 +67,41 @@ class MenuInitSerializer(CustomModelSerializer):
     def save(self, **kwargs):
         instance = super().save(**kwargs)
         children = self.initial_data.get('children')
-        menu_button = self.initial_data.get('menu_button')
         # 菜单表
         if children:
             for menu_data in children:
                 menu_data['parent'] = instance.id
                 filter_data = {
-                    "name": menu_data['name'],
-                    "web_path": menu_data['web_path'],
-                    "component": menu_data['component'],
-                    "component_name": menu_data['component_name'],
+                    "path": menu_data.get('path', '/'),
+                    "name": menu_data.get('name', str(uuid.uuid4().hex)),
+                    "component": menu_data.get('component', 'Layout'),
+                    "meta": menu_data.get('meta', {}),
+                    "sort": menu_data.get('sort', 1000),
                 }
                 instance_obj = Menu.objects.filter(**filter_data).first()
                 if instance_obj and not self.initial_data.get('reset'):
                     continue
                 serializer = MenuInitSerializer(instance_obj, data=menu_data, request=self.request)
                 serializer.is_valid(raise_exception=True)
-                serializer.save()
-        # 菜单按钮
-        if menu_button:
-            for menu_button_data in menu_button:
-                menu_button_data['menu'] = instance.id
-                filter_data = {
-                    "menu": menu_button_data['menu'],
-                    "value": menu_button_data['value']
-                }
-                instance_obj = MenuButton.objects.filter(**filter_data).first()
-                serializer = MenuButtonSerializer(instance_obj, data=menu_button_data, request=self.request)
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
+                objMenu = serializer.save()
+                # 菜单按钮
+                menu_button = menu_data.get('menu_button', [])
+                if menu_button:
+                    for menu_button_data in menu_button:
+                        menu_button_data['menu'] = objMenu.id
+                        filter_data = {
+                            "menu": menu_button_data['menu'],
+                            "value": menu_button_data['value']
+                        }
+                        instance_obj = MenuButton.objects.filter(**filter_data).first()
+                        serializer = MenuButtonSerializer(instance_obj, data=menu_button_data, request=self.request)
+                        serializer.is_valid(raise_exception=True)
+                        serializer.save()
         return instance
 
     class Meta:
         model = Menu
-        fields = ['name', 'icon', 'sort', 'is_link', 'is_catalog', 'web_path', 'component', 'component_name', 'status',
-                  'cache', 'visible', 'parent', 'children', 'menu_button', 'creator', 'dept_belong_id']
+        fields = ['path', 'name', 'component', 'meta', 'sort', 'parent', 'children', 'menu_button']
         extra_kwargs = {
             'creator': {'write_only': True},
             'dept_belong_id': {'write_only': True}
@@ -122,6 +116,14 @@ class WebRouterSerializer(CustomModelSerializer):
     path = serializers.CharField(source="web_path")
     title = serializers.CharField(source="name")
     menuPermission = serializers.SerializerMethodField(read_only=True)
+    meta = serializers.SerializerMethodField(read_only=True)
+
+    def get_meta(self, instance):
+        return {
+            "title": instance.name,
+            "icon": instance.icon,
+            "breadcrumbHidden": instance.breadcrumb_hidden,
+        }
 
     def get_menuPermission(self, instance):
         # 判断是否是超级管理员
@@ -130,7 +132,8 @@ class WebRouterSerializer(CustomModelSerializer):
         else:
             # 根据当前角色获取权限按钮id集合
             permissionIds = self.request.user.role.values_list('permission', flat=True)
-            queryset = instance.menuPermission.filter(id__in=permissionIds, menu=instance.id).values_list('value', flat=True)
+            queryset = instance.menuPermission.filter(id__in=permissionIds, menu=instance.id).values_list('value',
+                                                                                                          flat=True)
             if queryset:
                 return queryset
             else:
@@ -138,9 +141,34 @@ class WebRouterSerializer(CustomModelSerializer):
 
     class Meta:
         model = Menu
-        fields = ('id', 'parent', 'icon', 'sort', 'path', 'name', 'title', 'is_link', 'is_catalog', 'web_path', 'component',
-        'component_name', 'cache', 'visible', 'menuPermission')
+        fields = (
+            'id', 'parent', 'meta', 'icon', 'sort', 'path', 'name', 'title', 'is_link', 'is_catalog', 'web_path',
+            'component',
+            'component_name', 'cache', 'visible', 'menuPermission')
         read_only_fields = ["id"]
+
+
+# 递归获取菜单
+def get_child_menu(childs, menuIds, treeIds):
+    '''
+    :param 当前节点:
+    :return [{"id": child.id, "title": child.title, "children": []}]:
+    '''
+    children = []
+    if childs:
+        for child in childs:
+            if child.id in menuIds and child.id not in treeIds:
+                data = {"path": child.path, "name": child.name,
+                        "component": child.component, "meta": child.meta}
+                treeIds.append(child.id)
+                _childs = Menu.objects.filter(parent=child)
+                if _childs:
+                    data["children"] = get_child_menu(_childs, menuIds, treeIds)
+                children.append(data)
+    return children
+
+
+
 
 
 class MenuViewSet(CustomModelViewSet):
@@ -158,16 +186,26 @@ class MenuViewSet(CustomModelViewSet):
     update_serializer_class = MenuCreateSerializer
     search_fields = ['name', 'status']
     filter_fields = ['parent', 'name', 'status', 'is_link', 'visible', 'cache', 'is_catalog']
-    # extra_filter_backends = []
 
-    @action(methods=['GET'], detail=False, permission_classes=[])
-    def web_router(self, request):
-        """用于前端获取当前角色的路由"""
+    # extra_filter_backends = []
+    # 返回左侧菜单
+    @action(methods=['get'], detail=False, url_path='leftMenu', permission_classes=[])
+    def leftMenu(self, request, *args, **kwargs):
+        # 获得用户权限
         user = request.user
-        queryset = self.queryset.filter(status=1)
-        if not user.is_superuser:
-            menuIds = user.role.values_list('menu__id', flat=True)
-            queryset = Menu.objects.filter(id__in=menuIds, status=1)
-        serializer = WebRouterSerializer(queryset, many=True, request=request)
-        data = serializer.data
-        return APIResponse(data=data, msg="获取成功")
+        tree = []
+        treeIds = []
+        menuIds = user.role.values_list('menu__id', flat=True)
+        menusResult = Menu.objects.filter(id__in=menuIds, status=True, parent=None).order_by('sort')
+        for menu in menusResult:
+            if menu.id not in treeIds:
+                menu_data = {"path": menu.path, "name": menu.name,
+                             "component": menu.component, "meta": menu.meta}
+                treeIds.append(menu.id)
+                childs = Menu.objects.filter(parent=menu).order_by('sort')
+                if childs:
+                    menu_data["children"] = get_child_menu(childs, menuIds, treeIds)
+                tree.append(menu_data)
+        if len(tree) == 0:
+            return ErrorResponse(code=-1, msg='您暂无登录系统权限', )
+        return SuccessResponse(data=tree, total=len(tree))

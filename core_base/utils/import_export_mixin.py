@@ -10,7 +10,7 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from rest_framework.request import Request
 
 from core_base.utils.import_export import import_to_data
-from core_base.utils.json_response import APIResponse
+from core_base.utils.json_response import DetailResponse
 from core_base.utils.request_util import get_verbose_name
 
 
@@ -116,16 +116,17 @@ class ImportSerializerMixin:
             wb.save(response)
             return response
 
-        updateSupport = request.data.get("updateSupport")
+        updateSupport = int(request.data.get("updateSupport"))
         # 从excel中组织对应的数据结构，然后使用序列化器保存
         queryset = self.filter_queryset(self.get_queryset())
         # 获取多对多字段
+
         m2m_fields = [
             ele.attname
             for ele in queryset.model._meta.get_fields()
-            if hasattr(ele, "many_to_many") and ele.many_to_many == True
+            if hasattr(ele, "many_to_many") and ele.many_to_many and hasattr(ele,"attname")
         ]
-        data = import_to_data(request.data.get("url"), self.import_field_dict, m2m_fields)
+        data = import_to_data(request.FILES.get("file"), self.import_field_dict, m2m_fields)
         unique_list = [
             ele.attname for ele in queryset.model._meta.get_fields() if hasattr(ele, "unique") and ele.unique == True
         ]
@@ -140,7 +141,7 @@ class ImportSerializerMixin:
             serializer = self.import_serializer_class(instance, data=ele)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-        return APIResponse(msg=f"导入成功！")
+        return DetailResponse(msg=f"导入成功！")
 
 
 class ExportSerializerMixin:

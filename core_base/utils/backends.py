@@ -4,6 +4,7 @@ import logging
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 from django.utils import timezone
+from django.contrib.auth.hashers import make_password
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
@@ -26,7 +27,7 @@ class CustomBackend(ModelBackend):
         else:
             check_password = user.check_password(password)
             if not check_password:
-                check_password = user.check_password(hashlib.md5(password.encode(encoding='UTF-8')).hexdigest())
+                check_password = user.check_password(user.check_password(make_password(str(password))))
             if check_password and self.user_can_authenticate(user):
                 user.last_login = timezone.now()
                 user.save()

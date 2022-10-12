@@ -1,19 +1,14 @@
 # -*- coding: utf-8 -*-
 
-"""
-@author: 猿小天
-@contact: QQ:1638245306
-@Created on: 2021/6/3 003 0:30
-@Remark: 字典管理
-"""
 from rest_framework import serializers
 from rest_framework.views import APIView
 
 from core_base import dispatch
 from core_base.models import Dictionary
-from core_base.utils.json_response import APIResponse
+from core_base.utils.json_response import SuccessResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
+from rest_framework.decorators import action
 
 
 class DictionarySerializer(CustomModelSerializer):
@@ -62,7 +57,7 @@ class DictionaryInitSerializer(CustomModelSerializer):
 
     class Meta:
         model = Dictionary
-        fields = ['label', 'value', 'parent', 'type', 'color', 'is_value', 'status', 'sort', 'remark', 'creator',
+        fields = ['label', 'value', 'parent', 'type', 'color', 'is_value', 'status', 'sort', 'creator',
                   'dept_belong_id', 'children']
         read_only_fields = ["id"]
         extra_kwargs = {
@@ -81,6 +76,22 @@ class DictionaryCreateUpdateSerializer(CustomModelSerializer):
         fields = '__all__'
 
 
+def get_child_dictionary(childs):
+    '''
+    :param 当前节点:
+    :return [{"id": child.id, "title": child.title, "children": []}]:
+    '''
+    children = []
+    if childs:
+        for child in childs:
+            data = {"id": child.id, "key": child.value, "label": child.label}
+            _childs = Dictionary.objects.filter(parent=child)
+            if _childs:
+                data["children"] = get_child_dictionary(_childs)
+            children.append(data)
+    return children
+
+
 class DictionaryViewSet(CustomModelViewSet):
     """
     字典管理接口
@@ -94,6 +105,31 @@ class DictionaryViewSet(CustomModelViewSet):
     serializer_class = DictionarySerializer
     extra_filter_backends = []
     search_fields = ['label']
+
+    # 返回字典类型
+    @action(methods=['GET'], detail=False, permission_classes=[])
+    def dictionary_tree(self, request, *args, **kwargs):
+        result = []
+        dictionarysParent = []
+        dictionarys = Dictionary.objects.filter(status=True, parent=None).order_by('sort')
+        dictionary_data = {"id": "0", "key": "root", "label": "全部字典", "children": []}
+        for dictionary in dictionarys:
+            children_data = {"id": dictionary.id, "key": dictionary.value, "label": dictionary.label}
+            dictionarysParent.append(children_data)
+        dictionary_data["children"] = dictionarysParent
+        result.append(dictionary_data)
+        return SuccessResponse(data=result, msg="获取成功")
+
+    @action(methods=['GET'], detail=False, permission_classes=[])
+    def dictionary_list(self, request, *args, **kwargs):
+        label = request.GET.get('label', '')
+        print(label)
+        dictionarys = Dictionary.objects.filter(parent__label=label).order_by('sort').values("id", "label",
+                                                                                                  "value", "parent",
+                                                                                             "status","sort",
+                                                                                                  "color",
+                                                                                                  "description")
+        return SuccessResponse(data=list(dictionarys), msg="获取成功")
 
 
 class InitDictionaryViewSet(APIView):
@@ -115,5 +151,5 @@ class InitDictionaryViewSet(APIView):
             else:
                 data = self.queryset.filter(parent__value=dictionary_key, status=True).values('label', 'value', 'type',
                                                                                               'color')
-            return APIResponse(data=data, msg="获取成功")
-        return APIResponse(data=[], msg="获取成功")
+            return SuccessResponse(data=data, msg="获取成功")
+        return SuccessResponse(data=[], msg="获取成功")

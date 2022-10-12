@@ -16,7 +16,7 @@ from django.conf import settings
 
 from core_base import dispatch
 from core_base.models import Users
-from core_base.utils.json_response import APIResponse
+from core_base.utils.json_response import ErrorResponse, DetailResponse
 from core_base.utils.request_util import save_login_log
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.validator import CustomValidationError
@@ -28,7 +28,7 @@ class CaptchaView(APIView):
 
     def get(self, request):
         data = {}
-        if dispatch.get_system_config_values("base.captcha_state"):
+        if dispatch.get_system_config_values("base.captcha_state") or True:
             hashkey = CaptchaStore.generate_key()
             id = CaptchaStore.objects.filter(hashkey=hashkey).first().id
             imgage = captcha_image(request, hashkey)
@@ -38,7 +38,7 @@ class CaptchaView(APIView):
                 "key": id,
                 "image_base": "data:image/png;base64," + image_base.decode("utf-8"),
             }
-        return APIResponse(data=data)
+        return DetailResponse(data=data)
 
 
 class LoginSerializer(TokenObtainPairSerializer):
@@ -59,12 +59,12 @@ class LoginSerializer(TokenObtainPairSerializer):
     default_error_messages = {"no_active_account": _("账号/密码错误")}
 
     def validate(self, attrs):
-        captcha = self.initial_data.get("captcha", None)
+        captcha = self.initial_data.get("verificationCode", None)
         if dispatch.get_system_config_values("base.captcha_state"):
             if captcha is None:
                 raise CustomValidationError("验证码不能为空")
             self.image_code = CaptchaStore.objects.filter(
-                id=self.initial_data["captchaKey"]
+                id=self.initial_data["key"]
             ).first()
             five_minute_ago = datetime.now() - timedelta(hours=0, minutes=5, seconds=0)
             if self.image_code and five_minute_ago > self.image_code.expiration:
@@ -80,14 +80,13 @@ class LoginSerializer(TokenObtainPairSerializer):
                     self.image_code and self.image_code.delete()
                     raise CustomValidationError("图片验证码错误")
         data = super().validate(attrs)
-        data["name"] = self.user.name
+        data["token"] = data.get('access', '')
         data["userId"] = self.user.id
-        data["avatar"] = self.user.avatar
         request = self.context.get("request")
         request.user = self.user
         # 记录登录日志
         save_login_log(request=request)
-        return {"code": 2000, "msg": "请求成功", "data": data}
+        return {"code": 200, "msg": "请求成功", "data": data}
 
 
 class LoginView(TokenObtainPairView):
@@ -131,7 +130,7 @@ class LoginTokenView(TokenObtainPairView):
 
 class LogoutView(APIView):
     def post(self, request):
-        return APIResponse(msg="注销成功")
+        return DetailResponse(msg="注销成功")
 
 
 class ApiLoginSerializer(CustomModelSerializer):
@@ -164,4 +163,4 @@ class ApiLogin(APIView):
             login(request, user_obj)
             return redirect("/")
         else:
-            return APIResponse(msg="账号/密码错误")
+            return ErrorResponse(msg="账号/密码错误")

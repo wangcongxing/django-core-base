@@ -1,22 +1,19 @@
 # -*- coding: utf-8 -*-
 import os
 import re
-
 import openpyxl
 from django.conf import settings
 
-
-def import_to_data(file_url, field_data, m2m_fields=None):
+def import_to_data(file_Stream, field_data, m2m_fields=None):
     """
     读取导入的excel文件
-    :param file_url:
+    :param file_Stream:
     :param field_data: 首行数据源
     :param m2m_fields: 多对多字段
     :return:
     """
     # 读取excel 文件
-    file_path_dir = os.path.join(settings.BASE_DIR, file_url)
-    workbook = openpyxl.load_workbook(file_path_dir)
+    workbook = openpyxl.load_workbook(file_Stream)
     table = workbook[workbook.sheetnames[0]]
     # 获取参数映射
     validation_data_dict = {}

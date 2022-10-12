@@ -38,5 +38,6 @@ setup(
         "django-simple-captcha >= 0.4",
         "django-tenants >= 0.4",
         "django-timezone-field >= 1.0",
+        "pandas==1.5.0",
     ]
 )

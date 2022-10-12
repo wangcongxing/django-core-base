@@ -1,18 +1,12 @@
 # -*- coding: utf-8 -*-
 
-"""
-@author: 猿小天
-@contact: QQ:1638245306
-@Created on: 2021/6/1 001 22:57
-@Remark: 自定义视图集
-"""
 import uuid
 from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
 
 from core_base.utils.filters import DataLevelPermissionsFilter
 from core_base.utils.import_export_mixin import ExportSerializerMixin, ImportSerializerMixin
-from core_base.utils.json_response import APIResponse
+from core_base.utils.json_response import SuccessResponse, ErrorResponse, DetailResponse
 from core_base.utils.permission import CustomPermission
 from django_restql.mixins import QueryArgumentsMixin
 
@@ -59,7 +53,7 @@ class CustomModelViewSet(ModelViewSet, ImportSerializerMixin, ExportSerializerMi
         serializer = self.get_serializer(data=request.data, request=request)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        return APIResponse(data=serializer.data, msg="新增成功")
+        return DetailResponse(data=serializer.data, msg="新增成功")
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -68,12 +62,12 @@ class CustomModelViewSet(ModelViewSet, ImportSerializerMixin, ExportSerializerMi
             serializer = self.get_serializer(page, many=True, request=request)
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True, request=request)
-        return APIResponse(data=serializer.data, msg="获取成功")
+        return SuccessResponse(data=serializer.data, msg="获取成功")
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
-        return APIResponse(data=serializer.data, msg="获取成功")
+        return DetailResponse(data=serializer.data, msg="获取成功")
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
@@ -86,7 +80,7 @@ class CustomModelViewSet(ModelViewSet, ImportSerializerMixin, ExportSerializerMi
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
-        return APIResponse(data=serializer.data, msg="更新成功")
+        return DetailResponse(data=serializer.data, msg="更新成功")
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -97,14 +91,15 @@ class CustomModelViewSet(ModelViewSet, ImportSerializerMixin, ExportSerializerMi
             instance.save()
         else:
             self.perform_destroy(instance)
-        return APIResponse(data=[], msg="删除成功")
+        return DetailResponse(data=[], msg="删除成功")
 
-    @action(methods=['delete'], detail=False)
+    @action(methods=['delete'], detail=False, url_path='multiple_delete', permission_classes=[])
     def multiple_delete(self, request, *args, **kwargs):
-        request_data = request.data
-        keys = request_data.get('keys', None)
-        if keys:
-            self.get_queryset().filter(id__in=keys).delete()
-            return APIResponse(data=[], msg="删除成功")
-        else:
-            return APIResponse(msg="未获取到keys字段")
+        delete_id = str(request.data.get("ids", ""))
+        list_ids = list(filter(None, delete_id.split(',')))
+        list_ids = [int(x) for x in list_ids if x.split()]
+        # 软删除
+        # self.queryset.model.objects.filter(id__in=list_ids).delete()
+        # 直接删除
+        self.queryset.model.objects.filter(id__in=list_ids).delete(soft_delete=False)
+        return SuccessResponse(msg="删除成功")

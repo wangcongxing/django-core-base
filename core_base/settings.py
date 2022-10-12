@@ -14,6 +14,7 @@ import os
 import sys
 from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
+SECRET_KEY = 'django-insecure-no%8z#s@7=%-6+yw5c(88!qo8)!xc#$gmez$g3s6wmdkszdhg*'
 
 API_LOG_ENABLE = True
 # API_LOG_METHODS = 'ALL'

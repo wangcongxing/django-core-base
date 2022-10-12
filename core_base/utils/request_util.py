@@ -11,7 +11,7 @@ from django.urls.resolvers import ResolverMatch
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from user_agents import parse
 
-from core_base.models import LoginLog
+from core_base.models import Logs
 
 
 def get_request_user(request):
@@ -209,11 +209,14 @@ def save_login_log(request):
     """
     ip = get_request_ip(request=request)
     analysis_data = get_ip_analysis(ip)
+    analysis_data['logtype'] = 4
     analysis_data['username'] = request.user.username
-    analysis_data['ip'] = ip
-    analysis_data['agent'] = str(parse(request.META['HTTP_USER_AGENT']))
-    analysis_data['browser'] = get_browser(request)
-    analysis_data['os'] = get_os(request)
+    analysis_data['request_ip'] = ip
+    analysis_data['request_agent'] = str(parse(request.META['HTTP_USER_AGENT']))
+    analysis_data['request_browser'] = get_browser(request)
+    analysis_data['request_os'] = get_os(request)
     analysis_data['creator_id'] = request.user.id
     analysis_data['dept_belong_id'] = getattr(request.user, 'dept_id', '')
-    LoginLog.objects.create(**analysis_data)
+    analysis_data['response_code'] = "200"
+    analysis_data['execute_result'] = "登录成功"
+    Logs.objects.create(**analysis_data)

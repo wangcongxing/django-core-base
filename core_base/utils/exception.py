@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""
-@author: 猿小天
-@contact: QQ:1638245306
-@Created on: 2021/6/2 002 16:06
-@Remark: 自定义异常处理
-"""
 import logging
 import traceback
 
@@ -13,7 +7,7 @@ from django.db.models import ProtectedError
 from rest_framework.exceptions import APIException as DRFAPIException, AuthenticationFailed
 from rest_framework.views import set_rollback
 
-from core_base.utils.json_response import APIResponse
+from core_base.utils.json_response import ErrorResponse
 
 logger = logging.getLogger(__name__)
 
@@ -50,4 +44,4 @@ def CustomExceptionHandler(ex, context):
     # for key in errorMsg:
     #     msg = errorMsg[key][0]
 
-    return APIResponse(msg=msg, code=code)
+    return ErrorResponse(msg=msg, code=code)

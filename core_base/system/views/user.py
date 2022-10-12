@@ -1,5 +1,3 @@
-import hashlib
-
 from django.contrib.auth.hashers import make_password
 from django_restql.fields import DynamicSerializerMethodField
 from rest_framework import serializers
@@ -9,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from core_base import dispatch
 from core_base.models import Users, Role, Dept
 from core_base.system.views.role import RoleSerializer
-from core_base.utils.json_response import APIResponse
+from core_base.utils.json_response import ErrorResponse, DetailResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.validator import CustomUniqueValidator
 from core_base.utils.viewset import CustomModelViewSet
@@ -47,9 +45,15 @@ class UsersInitSerializer(CustomModelSerializer):
     初始化获取数信息(用于生成初始化json文件)
     """
 
+    def save(self, **kwargs):
+        data = super().save(**kwargs)
+        data.password = make_password(str(self.initial_data.get("password", "")))
+        data.save()
+        return data
+
     class Meta:
         model = Users
-        fields = ["username", "email", 'mobile', 'avatar', "name", 'gender', 'user_type', "dept", 'user_type',
+        fields = ["username", "email", 'phone', 'avatar', "name", 'gender', 'user_type', "dept", 'user_type',
                   'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'creator', 'dept_belong_id',
                   'password', 'last_login', 'is_superuser']
         read_only_fields = ['id']
@@ -103,7 +107,6 @@ class UserUpdateSerializer(CustomModelSerializer):
     """
     用户修改-序列化器
     """
-
     username = serializers.CharField(
         max_length=50,
         validators=[
@@ -111,7 +114,7 @@ class UserUpdateSerializer(CustomModelSerializer):
         ],
     )
     # password = serializers.CharField(required=False, allow_blank=True)
-    mobile = serializers.CharField(
+    phone = serializers.CharField(
         max_length=50,
         validators=[
             CustomUniqueValidator(queryset=Users.objects.all(), message="手机号必须唯一")
@@ -157,7 +160,7 @@ class ExportUserProfileSerializer(CustomModelSerializer):
             "username",
             "name",
             "email",
-            "mobile",
+            "phone",
             "gender",
             "is_active",
             "last_login",
@@ -166,13 +169,10 @@ class ExportUserProfileSerializer(CustomModelSerializer):
         )
 
 
-class UserProfileImportSerializer(CustomModelSerializer):
+class ImportUserProfileSerializer(CustomModelSerializer):
     def save(self, **kwargs):
         data = super().save(**kwargs)
-        password = hashlib.new(
-            "md5", str(self.initial_data.get("password", "")).encode(encoding="UTF-8")
-        ).hexdigest()
-        data.set_password(password)
+        data.password = make_password(str(self.initial_data.get("password", "")))
         data.save()
         return data
 
@@ -188,6 +188,7 @@ class UserProfileImportSerializer(CustomModelSerializer):
         )
 
 
+# 处理增删改查请求
 class UserViewSet(CustomModelViewSet):
     """
     用户接口
@@ -196,8 +197,9 @@ class UserViewSet(CustomModelViewSet):
     update:修改
     retrieve:单例
     destroy:删除
+    import:get 请求导出模版  post 导入Excel -支持ForeignKey/ManyToManyField
+    export:get 导出excel
     """
-
     queryset = Users.objects.exclude(is_superuser=1).all()
     serializer_class = UserSerializer
     create_serializer_class = UserCreateSerializer
@@ -205,7 +207,7 @@ class UserViewSet(CustomModelViewSet):
     # filter_fields = ["name", "username", "gender", "is_active", "dept", "user_type"]
     filter_fields = {
         "name": ["icontains"],
-        "username": ["exact"],
+        "username": ["icontains"],
         "gender": ["icontains"],
         "is_active": ["icontains"],
         "dept": ["exact"],
@@ -226,7 +228,7 @@ class UserViewSet(CustomModelViewSet):
     ]
     export_serializer_class = ExportUserProfileSerializer
     # 导入
-    import_serializer_class = UserProfileImportSerializer
+    import_serializer_class = ImportUserProfileSerializer
     import_field_dict = {
         "username": "登录账号",
         "name": "用户名称",
@@ -250,24 +252,45 @@ class UserViewSet(CustomModelViewSet):
     }
 
     @action(methods=["GET"], detail=False, permission_classes=[IsAuthenticated])
-    def user_info(self, request):
+    def userinfo(self, request):
         """获取当前用户信息"""
         user = request.user
         result = {
-            "name": user.name,
-            "mobile": user.mobile,
+            "uid": user.id,
+            "username": user.name,
+            "phone": user.phone,
             "gender": user.gender,
             "email": user.email,
             "avatar": user.avatar,
+            "commonLinks": user.commonLinks,
+            "websiteTheme": user.websiteTheme,
+            "myCollaboratorOrg": user.myCollaboratorOrg,
+            "permissions": ["read:system", "write:system", "delete:system"],
+            "roles": ["Admin"]
         }
-        return APIResponse(data=result, msg="获取成功")
+        return DetailResponse(data=result, msg="获取成功")
+
+    @action(methods=["GET"], detail=False, permission_classes=[IsAuthenticated])
+    def logout(self, request):
+        """获取当前用户信息"""
+        user = request.user
+        result = {
+            "username": user.name,
+            "phone": user.phone,
+            "gender": user.gender,
+            "email": user.email,
+            "avatar": user.avatar,
+            "permissions": ["read:system", "write:system", "delete:system"],
+            "roles": ["Admin"]
+        }
+        return DetailResponse(data=result, msg="获取成功")
 
     @action(methods=["PUT"], detail=False, permission_classes=[IsAuthenticated])
     def update_user_info(self, request):
         """修改当前用户信息"""
         user = request.user
         Users.objects.filter(id=user.id).update(**request.data)
-        return APIResponse(data=None, msg="修改成功")
+        return DetailResponse(data=None, msg="修改成功")
 
     @action(methods=["PUT"], detail=True, permission_classes=[IsAuthenticated])
     def change_password(self, request, *args, **kwargs):
@@ -279,15 +302,15 @@ class UserViewSet(CustomModelViewSet):
         new_pwd2 = data.get("newPassword2")
         if instance:
             if new_pwd != new_pwd2:
-                return APIResponse(msg="两次密码不匹配")
+                return ErrorResponse(msg="两次密码不匹配")
             elif instance.check_password(old_pwd):
                 instance.password = make_password(new_pwd)
                 instance.save()
-                return APIResponse(data=None, msg="修改成功")
+                return DetailResponse(data=None, msg="修改成功")
             else:
-                return APIResponse(msg="旧密码不正确")
+                return ErrorResponse(msg="旧密码不正确")
         else:
-            return APIResponse(msg="未获取到用户")
+            return ErrorResponse(msg="未获取到用户")
 
     @action(methods=["PUT"], detail=True, permission_classes=[IsAuthenticated])
     def reset_to_default_password(self, request, *args, **kwargs):
@@ -296,9 +319,9 @@ class UserViewSet(CustomModelViewSet):
         if instance:
             instance.set_password(dispatch.get_system_config_values("base.default_password"))
             instance.save()
-            return APIResponse(data=None, msg="密码重置成功")
+            return DetailResponse(data=None, msg="密码重置成功")
         else:
-            return APIResponse(msg="未获取到用户")
+            return ErrorResponse(msg="未获取到用户")
 
     @action(methods=["PUT"], detail=True)
     def reset_password(self, request, pk):
@@ -311,10 +334,10 @@ class UserViewSet(CustomModelViewSet):
         new_pwd2 = data.get("newPassword2")
         if instance:
             if new_pwd != new_pwd2:
-                return APIResponse(msg="两次密码不匹配")
+                return ErrorResponse(msg="两次密码不匹配")
             else:
                 instance.password = make_password(new_pwd)
                 instance.save()
-                return APIResponse(data=None, msg="修改成功")
+                return DetailResponse(data=None, msg="修改成功")
         else:
-            return APIResponse(msg="未获取到用户")
+            return ErrorResponse(msg="未获取到用户")

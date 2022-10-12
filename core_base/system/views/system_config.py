@@ -1,20 +1,16 @@
 # -*- coding: utf-8 -*-
 
-"""
-@author: 猿小天
-@contact: QQ:1638245306
-@Created on: 2022/1/21 003 0:30
-@Remark: 系统配置
-"""
+
 import django_filters
 from django.db.models import Q
 from django_filters.rest_framework import BooleanFilter
 from rest_framework import serializers
 from rest_framework.views import APIView
-
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAdminUser
 from core_base import dispatch
 from core_base.models import SystemConfig
-from core_base.utils.json_response import APIResponse
+from core_base.utils.json_response import DetailResponse, SuccessResponse, ErrorResponse
 from core_base.models import get_all_models_objects
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.validator import CustomValidationError
@@ -25,7 +21,6 @@ class SystemConfigCreateSerializer(CustomModelSerializer):
     """
     系统配置-新增时使用-序列化器
     """
-    form_item_type_label = serializers.CharField(source='get_form_item_type_display', read_only=True)
 
     class Meta:
         model = SystemConfig
@@ -78,8 +73,7 @@ class SystemConfigInitSerializer(CustomModelSerializer):
 
     class Meta:
         model = SystemConfig
-        fields = ['parent', 'title', 'key', 'value', 'sort', 'status', 'data_options', 'form_item_type', 'rule',
-                  'placeholder', 'setting', 'creator', 'dept_belong_id', 'children']
+        fields = ['parent', 'title', 'key', 'value', 'rule', 'creator', 'dept_belong_id', 'children']
         read_only_fields = ["id"]
         extra_kwargs = {
             'creator': {'write_only': True},
@@ -91,7 +85,6 @@ class SystemConfigSerializer(CustomModelSerializer):
     """
     系统配置-序列化器
     """
-    form_item_type_label = serializers.CharField(source='get_form_item_type_display', read_only=True)
 
     class Meta:
         model = SystemConfig
@@ -104,7 +97,6 @@ class SystemConfigChinldernSerializer(CustomModelSerializer):
     系统配置子级-序列化器
     """
     chinldern = serializers.SerializerMethodField()
-    form_item_type_label = serializers.CharField(source='get_form_item_type_display', read_only=True)
 
     def get_chinldern(self, instance):
         queryset = SystemConfig.objects.filter(parent=instance)
@@ -161,7 +153,7 @@ class SystemConfigViewSet(CustomModelViewSet):
     """
     系统配置接口
     """
-    queryset = SystemConfig.objects.order_by('sort', 'create_datetime')
+    queryset = SystemConfig.objects.order_by('create_datetime')
     serializer_class = SystemConfigChinldernSerializer
     create_serializer_class = SystemConfigCreateSerializer
     retrieve_serializer_class = SystemConfigChinldernSerializer
@@ -180,14 +172,14 @@ class SystemConfigViewSet(CustomModelViewSet):
                 serializer = SystemConfigCreateSerializer(instance_obj, data=data)
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
-        return APIResponse(msg="保存成功")
+        return DetailResponse(msg="保存成功")
 
     def get_association_table(self, request):
         """
         获取所有的model及字段信息
         """
         res = [ele.get('table') for ele in get_all_models_objects().values()]
-        return APIResponse(msg="获取成功", data=res)
+        return DetailResponse(msg="获取成功", data=res)
 
     def get_table_data(self, request, pk):
         """
@@ -195,10 +187,10 @@ class SystemConfigViewSet(CustomModelViewSet):
         """
         instance = SystemConfig.objects.filter(id=pk).first()
         if instance is None:
-            return APIResponse(msg="查询出错了~")
+            return ErrorResponse(msg="查询出错了~")
         setting = instance.setting
         if setting is None:
-            return APIResponse(msg="查询出错了~")
+            return ErrorResponse(msg="查询出错了~")
         table = setting.get('table')  # 获取model名
         model = get_all_models_objects(table).get("object", {})
         # 自己判断一下不存在
@@ -216,7 +208,7 @@ class SystemConfigViewSet(CustomModelViewSet):
         page = self.paginate_queryset(queryset)
         if page is not None:
             return self.get_paginated_response(queryset)
-        return APIResponse(msg="获取成功", data=queryset, total=len(queryset))
+        return SuccessResponse(msg="获取成功", data=queryset, total=len(queryset))
 
     def get_relation_info(self, request):
         """
@@ -227,20 +219,37 @@ class SystemConfigViewSet(CustomModelViewSet):
         table = body.get('table', None)
         instance = SystemConfig.objects.filter(key=var_name, setting__table=table).first()
         if instance is None:
-            return APIResponse(msg="未获取到关联信息")
+            return ErrorResponse(msg="未获取到关联信息")
         relation_id = body.get('relationIds', None)
         relationIds = []
         if relation_id is None:
-            return APIResponse(msg="未获取到关联信息")
+            return ErrorResponse(msg="未获取到关联信息")
         if instance.form_item_type in [13]:
             relationIds = [relation_id]
         elif instance.form_item_type in [14]:
             relationIds = relation_id.split(',')
         queryset = SystemConfig.objects.filter(value__in=relationIds).first()
         if queryset is None:
-            return APIResponse(msg="未获取到关联信息")
+            return ErrorResponse(msg="未获取到关联信息")
         serializer = SystemConfigChinldernSerializer(queryset.parent)
-        return APIResponse(msg="查询成功", data=serializer.data)
+        return DetailResponse(msg="查询成功", data=serializer.data)
+
+    @action(methods=["GET"], detail=False, permission_classes=[])
+    def get_config(self, request):
+        key = str(request.GET.get('key', "")).strip()
+        if key == "":
+            return ErrorResponse("请输入key进行查询")
+        system_config = SystemConfig.objects.filter(key=key, status=True).first()
+        return DetailResponse(data=system_config.value)
+
+    @action(methods=["PUT"], detail=False, permission_classes=[IsAdminUser])
+    def set_config(self, request):
+        key = str(request.GET.get('key', "")).strip()
+        newValue = request.data.get('newValue', "")
+        if key == "":
+            return ErrorResponse("请输入key进行查询")
+        SystemConfig.objects.filter(key=key).update(value=newValue)
+        return DetailResponse(msg="操作成功")
 
 
 class InitSettingsViewSet(APIView):
@@ -255,4 +264,4 @@ class InitSettingsViewSet(APIView):
         if not data:
             dispatch.refresh_system_config()
             data = dispatch.get_system_config()
-        return APIResponse(data=data)
+        return DetailResponse(data=data)

@@ -5,10 +5,11 @@ from rest_framework.views import APIView
 
 from core_base import dispatch
 from core_base.models import Dictionary
-from core_base.utils.json_response import SuccessResponse
+from core_base.utils.json_response import SuccessResponse,DetailResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 
 
 class DictionarySerializer(CustomModelSerializer):
@@ -84,7 +85,10 @@ def get_child_dictionary(childs):
     children = []
     if childs:
         for child in childs:
-            data = {"id": child.id, "key": child.value, "label": child.label}
+            data = {"id": child.id, "parent": child.parent.id, "parentLabel": child.parent.label,
+                    "createTime": child.create_datetime,
+                    "label": child.label, "value": child.value, "color": child.color, "status": child.status,
+                    "sort": child.sort, "description": child.description}
             _childs = Dictionary.objects.filter(parent=child)
             if _childs:
                 data["children"] = get_child_dictionary(_childs)
@@ -106,30 +110,41 @@ class DictionaryViewSet(CustomModelViewSet):
     extra_filter_backends = []
     search_fields = ['label']
 
-    # 返回字典类型
-    @action(methods=['GET'], detail=False, permission_classes=[])
-    def dictionary_tree(self, request, *args, **kwargs):
-        result = []
-        dictionarysParent = []
-        dictionarys = Dictionary.objects.filter(status=True, parent=None).order_by('sort')
-        dictionary_data = {"id": "0", "key": "root", "label": "全部字典", "children": []}
-        for dictionary in dictionarys:
-            children_data = {"id": dictionary.id, "key": dictionary.value, "label": dictionary.label}
-            dictionarysParent.append(children_data)
-        dictionary_data["children"] = dictionarysParent
-        result.append(dictionary_data)
-        return SuccessResponse(data=result, msg="获取成功")
+    # 返回字典全量
+    @action(methods=['get'], detail=False, url_path='dictionaryTree', permission_classes=[IsAuthenticated])
+    def dictionaryTree(self, request, *args, **kwargs):
+        user = request.user
+        label = str(request.GET.get("label", '')).strip()
+        if label == '':
+            dictionaryResult = Dictionary.objects.filter(parent=None).order_by('sort')
+        else:
+            dictionaryResult = Dictionary.objects.filter(label__icontains=label).order_by('sort')
+        tree = []
+        for dictionary in dictionaryResult:
+            dictionary_data = {"id": dictionary.id, "createTime": dictionary.create_datetime.strftime("%Y-%m-%d %H:%M"), "label": dictionary.label,
+                               "value": dictionary.value, "color": dictionary.color,
+                               "sort": dictionary.sort, "status": dictionary.status,
+                               "description": dictionary.description}
+            childs = Dictionary.objects.filter(parent=dictionary).order_by('sort')
+            if childs:
+                dictionary_data["children"] = get_child_dictionary(childs)
+            tree.append(dictionary_data)
+        return SuccessResponse(data=tree, total=len(tree), msg="获取成功")
 
     @action(methods=['GET'], detail=False, permission_classes=[])
-    def dictionary_list(self, request, *args, **kwargs):
-        label = request.GET.get('label', '')
-        print(label)
-        dictionarys = Dictionary.objects.filter(parent__label=label).order_by('sort').values("id", "label",
-                                                                                                  "value", "parent",
-                                                                                             "status","sort",
-                                                                                                  "color",
-                                                                                                  "description")
-        return SuccessResponse(data=list(dictionarys), msg="获取成功")
+    def dictionaryAllKey(self, request, *args, **kwargs):
+        dictionaryResult = Dictionary.objects.filter(parent=None, status=True).order_by('sort')
+        tree = []
+        for dictionary in dictionaryResult:
+            dictionary_data = {"id": dictionary.id, "createTime": dictionary.create_datetime, "label": dictionary.label,
+                               "value": dictionary.value, "color": dictionary.color,
+                               "sort": dictionary.sort, "status": dictionary.status,
+                               "description": dictionary.description}
+            childs = Dictionary.objects.filter(parent=dictionary).order_by('sort')
+            if childs:
+                dictionary_data["children"] = get_child_dictionary(childs)
+            tree.append(dictionary_data)
+        return DetailResponse(data=tree, msg="获取成功")
 
 
 class InitDictionaryViewSet(APIView):

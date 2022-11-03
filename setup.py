@@ -23,7 +23,7 @@ setup(
     include_package_data=True,
     python_requires=">=3.6",
     install_requires=[
-        "Django >= 3.2",  # Replace "X.Y" as appropriate
+        "Django >= 4.1.2",  # Replace "X.Y" as appropriate
         "Pillow >= 9.0.1",
         "django-cors-headers >= 3.11.0",
         "django-filter >= 21.1",
@@ -38,6 +38,9 @@ setup(
         "django-simple-captcha >= 0.4",
         "django-tenants >= 0.4",
         "django-timezone-field >= 1.0",
-        "pandas==1.5.0",
+        "pandas>=1.5.0",
+        "pycryptodome>=3.15.0",
+        "django-celery-beat>=2.4.0",
+        "django-celery-results >=2.4.0"
     ]
 )

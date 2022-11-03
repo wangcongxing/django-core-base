@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
-
-
 from django.apps import apps
 from django.db.models import QuerySet
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from core_base import settings, dispatch
 import hashlib
-import os
+import os, uuid, json
+from core_base.utils import encrypt_model_field
 
+# 表前缀
 table_prefix = settings.TABLE_PREFIX
+
+STATUS_CHOICES = (
+    (0, "禁用"),
+    (1, "启用"),
+)
 
 
 class SoftDeleteQuerySet(QuerySet):
@@ -48,6 +53,12 @@ class SoftDeleteManager(models.Manager):
         return SoftDeleteQuerySet(self.model).get(username=name)
 
 
+def media_file_name(instance, filename):
+    h = instance.md5sum
+    basename, ext = os.path.splitext(filename)
+    return os.path.join("files", h[0:1], h[1:2], h + ext.lower())
+
+
 def get_all_models_objects(model_name=None):
     """
     获取所有 models 对象
@@ -74,6 +85,44 @@ def get_all_models_objects(model_name=None):
     return settings.ALL_MODELS_OBJECTS or {}
 
 
+# 生成guid
+def newuuid():
+    return str(uuid.uuid4())
+
+
+# 重命名
+def rename(newname):
+    def decorator(fn):
+        fn.__name__ = newname
+        return fn
+
+    return decorator
+
+
+# 自动加解密
+rsaUtil = encrypt_model_field.RsaUtil()
+
+
+class EncrypyField(models.TextField):
+    def get_db_prep_value(self, value, connection, prepared=False):
+        # 保存到数据库加密
+        return rsaUtil.encrypt_by_public_key(json.dumps(value))
+
+    def from_db_value(self, value, expression, connection):
+        # 从数据库中读取解密
+        if value:
+            return json.loads(rsaUtil.decrypt_by_private_key(value))
+        return value
+
+
+# 所有models指定数据库名称
+class specifyDB(models.Model):
+
+    class Meta:
+        abstract = True
+        app_label = 'core_base'
+
+
 class CoreModel(models.Model):
     """
     核心标准抽象模型模型,可直接继承使用
@@ -81,8 +130,7 @@ class CoreModel(models.Model):
     """
     id = models.BigAutoField(primary_key=True, help_text="Id", verbose_name="Id")
     description = models.TextField(max_length=500000, verbose_name="描述", null=True, blank=True, help_text="描述")
-    creator = models.ForeignKey(to=settings.AUTH_USER_MODEL, related_query_name='creator_query', null=True,
-                                verbose_name='创建人', help_text="创建人", on_delete=models.SET_NULL, db_constraint=False)
+    creator = models.CharField(max_length=255, null=True, blank=True, help_text="创建者", verbose_name="创建者")
     modifier = models.CharField(max_length=255, null=True, blank=True, help_text="修改人", verbose_name="修改人")
     dept_belong_id = models.CharField(max_length=255, help_text="数据归属部门", null=True, blank=True, verbose_name="数据归属部门")
     update_datetime = models.DateTimeField(auto_now=True, null=True, blank=True, help_text="修改时间", verbose_name="修改时间")
@@ -97,13 +145,7 @@ class CoreModel(models.Model):
         verbose_name_plural = verbose_name
 
 
-STATUS_CHOICES = (
-    (0, "禁用"),
-    (1, "启用"),
-)
-
-
-class Users(CoreModel, AbstractUser):
+class Users(CoreModel, AbstractUser, specifyDB):
     username = models.CharField(max_length=150, unique=True, db_index=True, verbose_name="账号", help_text="用户账号")
     name = models.CharField(max_length=40, verbose_name="姓名", help_text="姓名")
     email = models.EmailField(max_length=255, verbose_name="邮箱", null=True, blank=True, help_text="邮箱")
@@ -146,9 +188,6 @@ class Users(CoreModel, AbstractUser):
         help_text="关联部门",
     )
 
-    def set_password(self, raw_password):
-        super().set_password(hashlib.md5(raw_password.encode(encoding="UTF-8")).hexdigest())
-
     class Meta:
         db_table = table_prefix + "system_users"
         verbose_name = "用户表"
@@ -156,7 +195,7 @@ class Users(CoreModel, AbstractUser):
         ordering = ("-create_datetime",)
 
 
-class Post(CoreModel):
+class Post(CoreModel, specifyDB):
     name = models.CharField(null=False, max_length=64, verbose_name="岗位名称", help_text="岗位名称")
     code = models.CharField(max_length=32, verbose_name="岗位编码", help_text="岗位编码")
     sort = models.IntegerField(default=1, verbose_name="岗位顺序", help_text="岗位顺序")
@@ -173,7 +212,7 @@ class Post(CoreModel):
         ordering = ("sort",)
 
 
-class Role(CoreModel):
+class Role(CoreModel, specifyDB):
     name = models.CharField(max_length=64, verbose_name="角色名称", help_text="角色名称")
     key = models.CharField(max_length=64, unique=True, verbose_name="权限字符", help_text="权限字符")
     sort = models.IntegerField(default=1, verbose_name="角色顺序", help_text="角色顺序")
@@ -201,11 +240,11 @@ class Role(CoreModel):
         ordering = ("sort",)
 
 
-class Dept(CoreModel):
+class Dept(CoreModel, specifyDB):
     name = models.CharField(max_length=64, verbose_name="部门名称", help_text="部门名称")
     sort = models.IntegerField(default=1, verbose_name="显示排序", help_text="显示排序")
-    owner = models.ManyToManyField(to=Users, related_name="负责人", blank=True, db_constraint=False,
-                                   verbose_name="负责人", help_text="负责人")
+    owner = models.JSONField(verbose_name='owner', max_length=50000, default=dict, null=True,
+                             blank=True, )
     status = models.BooleanField(default=True, verbose_name="状态", null=True, blank=True, help_text="状态")
     parent = models.ForeignKey(
         to="Dept",
@@ -225,7 +264,7 @@ class Dept(CoreModel):
         ordering = ("sort",)
 
 
-class Menu(CoreModel):
+class Menu(CoreModel, specifyDB):
     parent = models.ForeignKey(
         to="Menu",
         on_delete=models.CASCADE,
@@ -250,7 +289,7 @@ class Menu(CoreModel):
         ordering = ("sort",)
 
 
-class MenuButton(CoreModel):
+class MenuButton(CoreModel, specifyDB):
     menu = models.ForeignKey(
         to="Menu",
         db_constraint=False,
@@ -277,7 +316,7 @@ class MenuButton(CoreModel):
         ordering = ("-name",)
 
 
-class Dictionary(CoreModel):
+class Dictionary(CoreModel, specifyDB):
     TYPE_LIST = (
         (0, "text"),
         (1, "number"),
@@ -324,13 +363,7 @@ class Dictionary(CoreModel):
         return res
 
 
-def media_file_name(instance, filename):
-    h = instance.md5sum
-    basename, ext = os.path.splitext(filename)
-    return os.path.join("files", h[0:1], h[1:2], h + ext.lower())
-
-
-class FileList(CoreModel):
+class FileList(CoreModel, specifyDB):
     name = models.CharField(max_length=225, null=True, blank=True, verbose_name="名称", help_text="名称")
     file = models.CharField(max_length=225, null=True, blank=True, verbose_name="文件路径", help_text="文件路径")
     md5sum = models.CharField(max_length=36, blank=True, verbose_name="文件md5", help_text="文件md5")
@@ -342,7 +375,7 @@ class FileList(CoreModel):
         ordering = ("-create_datetime",)
 
 
-class Area(CoreModel):
+class Area(CoreModel, specifyDB):
     name = models.CharField(max_length=100, verbose_name="名称", help_text="名称")
     code = models.CharField(max_length=20, verbose_name="地区编码", help_text="地区编码", unique=True, db_index=True)
     level = models.BigIntegerField(verbose_name="地区层级(1省份 2城市 3区县 4乡级)", help_text="地区层级(1省份 2城市 3区县 4乡级)")
@@ -370,7 +403,7 @@ class Area(CoreModel):
         return f"{self.name}"
 
 
-class ApiWhiteList(CoreModel):
+class ApiWhiteList(CoreModel, specifyDB):
     url = models.CharField(max_length=200, help_text="url地址", verbose_name="url")
     METHOD_CHOICES = (
         (0, "GET"),
@@ -388,7 +421,7 @@ class ApiWhiteList(CoreModel):
         ordering = ("-create_datetime",)
 
 
-class SystemConfig(CoreModel):
+class SystemConfig(CoreModel, specifyDB):
     parent = models.ForeignKey(
         to="self",
         verbose_name="父级",
@@ -414,7 +447,7 @@ class SystemConfig(CoreModel):
         return f"{self.title}"
 
 
-class Logs(CoreModel):
+class Logs(CoreModel, specifyDB):
     LOG_TYPE_CHOICES = ((0, "操作日志"), (1, "前端日志"), (2, "数据库日志"), (3, "异常日志"), (4, "登录日志"))
     logtype = models.IntegerField(default=1, choices=LOG_TYPE_CHOICES, verbose_name="日志类型", help_text="日志类型")
     username = models.CharField(max_length=32, verbose_name="用户名", null=True, blank=True, help_text="用户名")
@@ -450,7 +483,7 @@ class Logs(CoreModel):
         ordering = ("-create_datetime",)
 
 
-class MessageCenter(CoreModel):
+class MessageCenter(CoreModel, specifyDB):
     title = models.CharField(max_length=100, verbose_name="标题", help_text="标题")
     content = models.TextField(verbose_name="内容", help_text="内容")
     target_type = models.IntegerField(default=0, verbose_name="目标类型", help_text="目标类型")
@@ -470,7 +503,7 @@ class MessageCenter(CoreModel):
 
 
 # 标签管理
-class Tags(CoreModel):
+class Tags(CoreModel, specifyDB):
     title = models.CharField(verbose_name='标签名称', max_length=255, null=False, blank=False)
     status = models.BooleanField(default=True, verbose_name="启用状态", help_text="启用状态")
     sort = models.IntegerField(verbose_name='显示顺序', default=1)
@@ -491,11 +524,12 @@ class Tags(CoreModel):
         return self.title
 
     class Meta:
+        db_table = table_prefix + "tags"
         verbose_name = verbose_name_plural = '标签管理'
 
 
 # 邮箱群组
-class EmailGroup(CoreModel):
+class EmailGroup(CoreModel, specifyDB):
     title = models.CharField(verbose_name='群组名称', max_length=255, null=False,
                              blank=False)
     account_number = models.CharField(verbose_name='群组帐号', max_length=255, null=False,
@@ -514,4 +548,19 @@ class EmailGroup(CoreModel):
         return self.title
 
     class Meta:
+        db_table = table_prefix + "email_group"
         verbose_name = verbose_name_plural = '邮箱群组'
+
+
+# 回收站
+class Recently(CoreModel, specifyDB):
+    nid = models.CharField(verbose_name='表id', max_length=255, null=False, blank=False)
+    modelName = models.CharField(verbose_name='模块名称', max_length=255, null=False, blank=False)
+    title = models.CharField(verbose_name='名称', max_length=255, null=False, blank=False)
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        db_table = table_prefix + "recently"
+        verbose_name = verbose_name_plural = '回收站'

@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+from django.db.models import Q
 from rest_framework import serializers
 
 from core_base.models import Area
+from core_base.utils.json_response import SuccessResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.viewset import CustomModelViewSet
 

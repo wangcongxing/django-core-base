@@ -47,7 +47,7 @@ class ApiLoggingMiddleware(MiddlewareMixin):
         user = get_request_user(request)
         info = {
             'request_ip': getattr(request, 'request_ip', 'unknown'),
-            'creator': user if not isinstance(user, AnonymousUser) else None,
+            'creator': user.id if not isinstance(user, AnonymousUser) else None,
             'username':user.username if not isinstance(user, AnonymousUser) else None,
             'dept_belong_id': getattr(request.user, 'dept_id', None),
             'request_method': request.method,

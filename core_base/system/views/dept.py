@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+"""
+@author: H0nGzA1
+@contact: QQ:2505811377
+@Remark: 部门管理
+"""
 from rest_framework import serializers
 
 from core_base.models import Dept, Users, EmailGroup, Tags
@@ -9,9 +14,9 @@ from core_base.utils.viewset import CustomModelViewSet
 from rest_framework.decorators import action
 from django_filters import rest_framework as filters
 import django_filters
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from core_base.utils import org_factory
-from django.db.models import Q
+from django.db.models import Q, Count, Sum
 
 
 class DeptSerializer(CustomModelSerializer):
@@ -67,6 +72,7 @@ class DeptInitSerializer(CustomModelSerializer):
                 serializer = DeptInitSerializer(instance_obj, data=menu_data, request=self.request)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
+
         return instance
 
     class Meta:
@@ -106,8 +112,9 @@ def get_child_dept(childs):
     if childs:
         for child in childs:
             data = {"id": child.id, "parent": child.parent.name, "createTime": child.create_datetime,
-                    "name": child.name,
-                    "sort": child.sort, }
+                    "name": child.name, "status": child.status,
+                    "sort": child.sort, "parent": child.parent.id if child.parent else "",
+                    "parentName": child.parent.name if child.parent else "", "owner": child.owner}
             _childs = Dept.objects.filter(parent=child)
             if _childs:
                 data["children"] = get_child_dept(_childs)
@@ -159,13 +166,14 @@ class DeptViewSet(CustomModelViewSet):
         user = request.user
         name = str(request.GET.get("name", '')).strip()
         if name == '':
-            deptResult = Dept.objects.filter(parent=None, status=True).order_by('sort')
+            deptResult = Dept.objects.filter(parent=None).order_by('sort')
         else:
-            deptResult = Dept.objects.filter(status=True, name__icontains=name).order_by('sort')
+            deptResult = Dept.objects.filter(name__icontains=name).order_by('sort')
         tree = []
         for dept in deptResult:
-            menu_data = {"id": dept.id, "createTime": dept.create_datetime, "name": dept.name,
-                         "sort": dept.sort, }
+            menu_data = {"id": dept.id, "createTime": dept.create_datetime, "name": dept.name, "status": dept.status,
+                         "sort": dept.sort, "parent": dept.parent.id if dept.parent else "",
+                         "parentName": dept.parent.name if dept.parent else "", "owner": dept.owner}
             childs = Dept.objects.filter(parent=dept).order_by('sort')
             if childs:
                 menu_data["children"] = get_child_dept(childs)
@@ -177,13 +185,19 @@ class DeptViewSet(CustomModelViewSet):
     # 返回部门组织架构树/增量 包括用户信息
     @action(methods=['get'], detail=False, url_path='dept_tree_userinfo', permission_classes=[IsAuthenticated])
     def dept_tree_userinfo(self, request, *args, **kwargs):
-        nid = request.GET.get("nid", 0)
-
-        parent = None if nid == '' else Dept.objects.filter(id=nid).first()
-        result = Dept.objects.filter(parent=parent, status=True).order_by(
-            "sort").values("id", "name",
-                           "owner",
-                           "sort", "description")
+        nid = request.GET.get("nid", "")
+        parent = None
+        if nid != "":
+            parent = Dept.objects.filter(id=nid).first()
+            result = Dept.objects.filter(parent=parent, status=True).order_by(
+                "sort").values("id", "name",
+                               "owner",
+                               "sort", "description")
+        else:
+            result = Dept.objects.filter(parent=None, status=True).order_by(
+                "sort").values("id", "name",
+                               "owner",
+                               "sort", "description")
         result = list(result)
         userList = Users.objects.filter(dept=parent)
         for item in userList:
@@ -193,12 +207,11 @@ class DeptViewSet(CustomModelViewSet):
                 "username": item.username,
                 "name": item.name,
                 "email": item.email,
-                "mobile": item.mobile,
                 "avatar": item.avatar,
                 "structLevelName": item.structLevelName,
                 "empNo": item.empNo,
                 "phone": item.phone,
-                "parent": item.dept.id,
+                "parent": item.dept.id if item.dept else None,
                 "sort": 1,
                 "desc": ""
             })
@@ -235,9 +248,9 @@ class DeptViewSet(CustomModelViewSet):
 
         emailGroupResult = list(EmailGroup.objects.filter(status=True).filter(
             Q(title__icontains=searchValue) | Q(account_number__icontains=searchValue)).values("id",
-                                                                                              "title",
-                                                                                              "account_number",
-                                                                                              "sort"))
+                                                                                               "title",
+                                                                                               "account_number",
+                                                                                               "sort"))
         # 我的标签
         tagResult = list(
             Tags.objects.filter(title__icontains=searchValue, status=True, creator=creator).values("id", "title"))

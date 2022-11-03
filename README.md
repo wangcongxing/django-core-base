@@ -15,5 +15,7 @@ pip install django-core-base
 'captcha',
 'rest_framework_simplejwt',
 'core_base',
+'django_celery_results',
+'django_celery_beat',  # 安装 django_celery_beat
 
 

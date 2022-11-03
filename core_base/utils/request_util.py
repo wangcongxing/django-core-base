@@ -215,7 +215,7 @@ def save_login_log(request):
     analysis_data['request_agent'] = str(parse(request.META['HTTP_USER_AGENT']))
     analysis_data['request_browser'] = get_browser(request)
     analysis_data['request_os'] = get_os(request)
-    analysis_data['creator_id'] = request.user.id
+    analysis_data['creator'] = request.user.id
     analysis_data['dept_belong_id'] = getattr(request.user, 'dept_id', '')
     analysis_data['response_code'] = "200"
     analysis_data['execute_result'] = "登录成功"

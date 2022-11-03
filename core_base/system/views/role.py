@@ -1,20 +1,28 @@
 # -*- coding: utf-8 -*-
 
-
+"""
+@author: 猿小天
+@contact: QQ:1638245306
+@Created on: 2021/6/3 003 0:30
+@Remark: 角色管理
+"""
 from rest_framework import serializers
 from rest_framework.decorators import action
 
 from core_base.models import Role, Menu, MenuButton
-from core_base.system.views.dept import DeptSerializer
-from core_base.system.views.menu import MenuSerializer
-from core_base.system.views.menu_button import MenuButtonSerializer
+from core_base.system.views.Dept import DeptSerializer
+from core_base.system.views.Menu import MenuSerializer
+from core_base.system.views.MenuButton import MenuButtonSerializer
+from core_base.utils.json_response import SuccessResponse
 from core_base.utils.serializers import CustomModelSerializer
 from core_base.utils.validator import CustomUniqueValidator
 from core_base.utils.viewset import CustomModelViewSet
 from django_filters import rest_framework as filters
 import django_filters
 from core_base.utils.json_response import SuccessResponse, ErrorResponse, DetailResponse
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from django.db.models import Count, F, Value
+from django.db import models
 
 
 class RoleSerializer(CustomModelSerializer):
@@ -96,11 +104,15 @@ def get_child_menu_button(childs):
     children = []
     if childs:
         for child in childs:
+            menu_button_list = list(MenuButton.objects.filter(menu=child).values("id", "name", "value"))
+
             data = {"id": child.id, "name": child.meta.get("title", ""),
-                    "children": list(MenuButton.objects.filter(menu=child).values("id", "name", "value")),"isPenultimate":True}
+                    "children": [], "menu_button_list": menu_button_list,
+                    "isPenultimate": True}
             _childs = Menu.objects.filter(parent=child)
             if _childs:
-                get_child_menu_button(_childs)
+                data["children"] = get_child_menu_button(_childs)
+
             children.append(data)
     return children
 
@@ -139,13 +151,11 @@ class RoleViewSet(CustomModelViewSet):
         :return:
         '''
         roleResult = Role.objects.filter(status=True).order_by("sort")
-        children = []
-        for item in roleResult:
-            children.append({
-                "id": item.id,
-                "role": item.key,
-                "label": item.name
-            })
+        children = [{
+            "id": item.id,
+            "role": item.key,
+            "label": item.name
+        } for item in roleResult]
         result = [
             {
                 'id': 'root',
@@ -171,7 +181,13 @@ class RoleViewSet(CustomModelViewSet):
             if childs:
                 menu_data["children"] = get_child_menu_button(childs)
             tree.append(menu_data)
-        role = Role.objects.get(id=rid).menu.all().values("id")
+        role = Role.objects.get(id=rid)
+        menuCheckedKeys = role.menu.all().values("id")
+        buttonCheckKeys = role.permission.all().values("id")
+        deptKeys = role.dept.all().values("id")
         result.update(
-            {"tree": tree, 'checkedKeys': [item.get('id') for item in role], 'dataRange': Role.DATASCOPE_CHOICES})
+            {"tree": tree, 'menuCheckedKeys': [item.get('id') for item in menuCheckedKeys],
+             'buttonCheckKeys': [item.get('id') for item in buttonCheckKeys],
+             'deptCheckKeys': [item.get('id') for item in deptKeys], 'dataRangeCheckKeys': role.data_range,
+             'dataRange': Role.DATASCOPE_CHOICES})
         return DetailResponse(data=result)
